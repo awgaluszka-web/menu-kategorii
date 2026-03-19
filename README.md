@@ -4,29 +4,39 @@ Wtyczka WordPress/WooCommerce dodająca klasyczny widget z menu kategorii produk
 
 ## Zasady działania (v1.3.0)
 
-Widget wyświetla **pełne drzewo kategorii** z rozwinięciem gałęzi prowadzącej do bieżącej kategorii:
+Widget wyświetla menu kategorii w zależności od poziomu bieżącej kategorii:
 
-- **Zawsze** wyświetlane są wszystkie kategorie główne (top-level, parent = 0).
-- **Tylko gałąź bieżącej kategorii jest rozwinięta** (ścieżka od root do bieżącej kategorii).
-- **Na każdym poziomie przodka** widoczne jest całe rodzeństwo (wszyscy bracia w danym węźle), nie tylko element na ścieżce.
-- **Bieżąca kategoria** jest wyróżniona pogrubionym, czarnym tekstem (`.is-current`).
-- Jeśli bieżąca kategoria ma dzieci, są one pokazane 1 poziom niżej.
-- Pozostałe gałęzie (poza ścieżką) nie są rozwijane.
+### Bieżąca kategoria jest TOP-LEVEL (parent = 0)
 
-### Przykładowy layout (bieżąca: „Rowery szosowe")
+- Wyświetlane są **wszystkie kategorie główne** (parent = 0).
+- Tylko dla **bieżącej top-level** pokazywane są jej **dzieci (1 poziom)** jako podlista.
+- Nie ma linku „Cofnij do" (brak parenta).
 
 ```
 Akcesoria
-Rowery                        ← przodek (is-ancestor)
+Rowery                        ← bieżąca (is-current, pogrubiona)
   ├─ Rowery górskie
   ├─ Rowery miejskie
-  └─ Rowery szosowe           ← bieżąca (is-current, pogrubiona)
-       ├─ Endurance
-       └─ Race
+  └─ Rowery szosowe
 Ubrania
 ```
 
-Link „← Cofnij do Rowery" pojawia się nad drzewem (jeśli bieżąca kategoria ma parenta).
+### Bieżąca kategoria jest NIŻEJ (parent ≠ 0)
+
+- Wyświetlane jest **wyłącznie rodzeństwo** bieżącej kategorii (dzieci jej parenta).
+- Pod **bieżącą kategorią** pokazywane są jej **dzieci (1 poziom)**, jeśli istnieją.
+- Pełne drzewo top-level nie jest wyświetlane.
+- Nad listą widoczny jest link **„← Cofnij do {parent}"**.
+
+```
+← Cofnij do Rowery
+
+Rowery górskie
+Rowery miejskie
+Rowery szosowe                ← bieżąca (is-current, pogrubiona)
+  ├─ Endurance
+  └─ Race
+```
 
 ### Ustalanie bieżącej kategorii
 
@@ -79,10 +89,9 @@ Możesz nadpisać styl w motywie, używając poniższych klas:
 | Klasa | Opis |
 |---|---|
 | `.wpcsm-menu` | Główna lista kategorii |
-| `.wpcsm-sub` | Podlista (dzieci danego węzła) |
+| `.wpcsm-sub` | Podlista (dzieci bieżącej kategorii) |
 | `.wpcsm-item` | Element listy |
 | `.is-current` | Bieżąca kategoria (pogrubiona, czarna) |
-| `.is-ancestor` | Przodek bieżącej kategorii |
 | `.wpcsm-link` | Link kategorii |
 | `.wpcsm-count` | Liczba produktów |
 | `.wpcsm-back` | Kontener linku „Cofnij do" |
