@@ -2,16 +2,31 @@
 
 Wtyczka WordPress/WooCommerce dodająca klasyczny widget z menu kategorii produktów w sidebar.
 
-## Nowe zasady działania (v1.1.0)
+## Zasady działania (v1.3.0)
 
-Widget wyświetla zwięzłe, kontekstowe menu dopasowane do bieżącej strony:
+Widget wyświetla **pełne drzewo kategorii** z rozwinięciem gałęzi prowadzącej do bieżącej kategorii:
 
-- **Jeśli bieżąca kategoria X ma podkategorie:**
-  - wyświetla wyłącznie X (wyróżnioną jako aktywną) oraz jej bezpośrednie podkategorie (1 poziom niżej).
-- **Jeśli bieżąca kategoria X nie ma podkategorii:**
-  - wyświetla rodzeństwo X (dzieci parenta X); jeśli X jest kategorią główną (parent = 0), pokazuje wszystkie kategorie główne.
-  - X jest wyróżnione jako aktywne wśród rodzeństwa.
-- Nigdy nie wyświetla całego drzewa ani kategorii spoza powyższych reguł.
+- **Zawsze** wyświetlane są wszystkie kategorie główne (top-level, parent = 0).
+- **Tylko gałąź bieżącej kategorii jest rozwinięta** (ścieżka od root do bieżącej kategorii).
+- **Na każdym poziomie przodka** widoczne jest całe rodzeństwo (wszyscy bracia w danym węźle), nie tylko element na ścieżce.
+- **Bieżąca kategoria** jest wyróżniona pogrubionym, czarnym tekstem (`.is-current`).
+- Jeśli bieżąca kategoria ma dzieci, są one pokazane 1 poziom niżej.
+- Pozostałe gałęzie (poza ścieżką) nie są rozwijane.
+
+### Przykładowy layout (bieżąca: „Rowery szosowe")
+
+```
+Akcesoria
+Rowery                        ← przodek (is-ancestor)
+  ├─ Rowery górskie
+  ├─ Rowery miejskie
+  └─ Rowery szosowe           ← bieżąca (is-current, pogrubiona)
+       ├─ Endurance
+       └─ Race
+Ubrania
+```
+
+Link „← Cofnij do Rowery" pojawia się nad drzewem (jeśli bieżąca kategoria ma parenta).
 
 ### Ustalanie bieżącej kategorii
 
@@ -26,16 +41,13 @@ Widget wyświetla zwięzłe, kontekstowe menu dopasowane do bieżącej strony:
 - Na stronie produktu bieżąca kategoria to **najgłębsza** (leaf) z przypisanych kategorii produktu.
 - CSS ładowany **tylko wtedy**, gdy widget rzeczywiście renderuje się na stronie.
 
-## Styl (Avada-friendly)
+## Styl
 
-Widget używa kolorów motywu Avada poprzez CSS variables z fallbackami:
-
-```
---awb-color1 → --awb-color-primary → --primary_color → --primary → currentColor
-```
-
-Aktywna kategoria jest wyróżniona lewym paskiem i delikatnym tłem w kolorze primary motywu.
-Brak czerwonego koloru — styl dostosowuje się automatycznie do palety motywu.
+- Jednolity rozmiar czcionki dla wszystkich poziomów drzewa.
+- Bez podkreśleń (ani domyślnie, ani na hover).
+- Aktywna kategoria wyróżniona wyłącznie pogrubieniem i ciemnym kolorem (`#222`).
+- Drzewko z liniami (pionowe i poziome łączniki, wcięcia).
+- Brak czerwieni – styl neutralny, Avada-friendly.
 
 ## Instalacja
 
@@ -57,7 +69,7 @@ Brak czerwonego koloru — styl dostosowuje się automatycznie do palety motywu.
 woo-product-cat-sidebar-menu/
 ├── woo-product-cat-sidebar-menu.php   # Główny plik wtyczki
 └── assets/
-    └── wpcsm.css                      # Style sidebara (Avada-friendly)
+    └── wpcsm.css                      # Style sidebara
 ```
 
 ## Klasy CSS
@@ -67,13 +79,14 @@ Możesz nadpisać styl w motywie, używając poniższych klas:
 | Klasa | Opis |
 |---|---|
 | `.wpcsm-menu` | Główna lista kategorii |
-| `.wpcsm-sub` | Podlista (podkategorie bieżącej kategorii) |
+| `.wpcsm-sub` | Podlista (dzieci danego węzła) |
 | `.wpcsm-item` | Element listy |
-| `.wpcsm-item--current` | Bieżąca kategoria (wariant z dziećmi) |
-| `.wpcsm-item--child` | Bezpośrednia podkategoria bieżącej kategorii |
-| `.is-current` | Wyróżnienie bieżącej kategorii |
+| `.is-current` | Bieżąca kategoria (pogrubiona, czarna) |
+| `.is-ancestor` | Przodek bieżącej kategorii |
 | `.wpcsm-link` | Link kategorii |
 | `.wpcsm-count` | Liczba produktów |
+| `.wpcsm-back` | Kontener linku „Cofnij do" |
+| `.wpcsm-back__link` | Link „← Cofnij do {parent}" |
 
 ## Wymagania
 
