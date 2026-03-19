@@ -1,14 +1,14 @@
 <?php
 /**
  * Plugin Name: Woo Menu Kategorii Produktów (Sidebar)
- * Description: Widget do WooCommerce: wyświetla tylko główne kategorie produktów oraz rozwiniętą gałąź bieżącej kategorii (ścieżka) + podkategorie bieżącej kategorii o jeden poziom niżej.
- * Version: 1.0.1
+ * Description: Widget do WooCommerce: wyświetla menu kategorii produktów dopasowane do bieżącego kontekstu – jeśli kategoria ma dzieci, pokazuje ją z dziećmi; jeśli nie ma – pokazuje rodzeństwo.
+ * Version: 1.1.0
  * Author: Adam Gałuszka
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('WPCSM_VERSION', '1.0.1');
+define('WPCSM_VERSION', '1.1.0');
 
 class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 
@@ -69,6 +69,13 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 			return;
 		}
 
+		$current_term = $this->get_current_product_cat_term();
+		$current_id   = $current_term ? (int) $current_term->term_id : 0;
+
+		if (!$current_id) {
+			return;
+		}
+
 		// Załaduj styl tylko gdy widget rzeczywiście się renderuje
 		wp_enqueue_style(
 			'wpcsm-style',
@@ -77,7 +84,7 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 			WPCSM_VERSION
 		);
 
-		$title = isset($instance['title']) ? $instance['title'] : '';
+		$title      = isset($instance['title']) ? $instance['title'] : '';
 		$hide_empty = !empty($instance['hide_empty']);
 		$show_count = !empty($instance['show_count']);
 
@@ -87,50 +94,52 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 			echo $args['before_title'] . apply_filters('widget_title', $title) . $args['after_title'];
 		}
 
-		$current_term = $this->get_current_product_cat_term();
-		$current_id = $current_term ? (int)$current_term->term_id : 0;
-
-		// Łańcuch przodków (łącznie z bieżącą kategorią)
-		$chain_ids = [];
-		if ($current_id) {
-			$ancestors = get_ancestors($current_id, 'product_cat'); // ID od rodzica do korzenia
-			$chain_ids = array_reverse($ancestors);
-			$chain_ids[] = $current_id;
-		}
-
-		$top_terms = get_terms([
-			'taxonomy' => 'product_cat',
-			'parent' => 0,
+		// Pobierz dzieci bieżącej kategorii
+		$children = get_terms([
+			'taxonomy'   => 'product_cat',
+			'parent'     => $current_id,
 			'hide_empty' => $hide_empty,
-			'orderby' => 'name',
-			'order' => 'ASC',
+			'orderby'    => 'name',
+			'order'      => 'ASC',
 		]);
-
-		if (is_wp_error($top_terms) || empty($top_terms)) {
-			echo $args['after_widget'];
-			return;
-		}
+		$has_children = !is_wp_error($children) && !empty($children);
 
 		echo '<ul class="wpcsm-menu wpcsm-menu--product-cat">';
 
-		foreach ($top_terms as $top) {
-			$top_id = (int)$top->term_id;
-			$is_in_branch = $current_id && in_array($top_id, $chain_ids, true);
-			$is_current = ($current_id === $top_id);
-
-			echo '<li class="wpcsm-item wpcsm-item--top'
-				. ($is_current ? ' is-current' : '')
-				. ($is_in_branch && !$is_current ? ' is-ancestor' : '')
-				. '">';
-
-			echo $this->render_term_link($top, $show_count);
-
-			// Jeśli bieżąca gałąź przechodzi przez tę kategorię główną -> renderuj rozwiniętą ścieżkę
-			if ($is_in_branch) {
-				echo $this->render_expanded_branch($top_id, $chain_ids, $current_id, $hide_empty, $show_count);
+		if ($has_children) {
+			// Wariant 1: X ma dzieci → pokaż X (aktywna) + dzieci X (1 poziom)
+			echo '<li class="wpcsm-item wpcsm-item--current is-current">';
+			echo $this->render_term_link($current_term, $show_count);
+			echo '<ul class="wpcsm-sub">';
+			foreach ($children as $child) {
+				echo '<li class="wpcsm-item wpcsm-item--child">';
+				echo $this->render_term_link($child, $show_count);
+				echo '</li>';
 			}
-
+			echo '</ul>';
 			echo '</li>';
+		} else {
+			// Wariant 2: X nie ma dzieci → pokaż rodzeństwo (dzieci parenta X)
+			// Jeśli parent = 0 → wszystkie kategorie główne
+			$parent_id = isset($current_term->parent) ? (int) $current_term->parent : 0;
+			$siblings  = get_terms([
+				'taxonomy'   => 'product_cat',
+				'parent'     => $parent_id,
+				'hide_empty' => $hide_empty,
+				'orderby'    => 'name',
+				'order'      => 'ASC',
+			]);
+
+			if (!is_wp_error($siblings) && !empty($siblings)) {
+				foreach ($siblings as $sibling) {
+					$is_current = ((int) $sibling->term_id === $current_id);
+					echo '<li class="wpcsm-item'
+						. ($is_current ? ' is-current' : '')
+						. '">';
+					echo $this->render_term_link($sibling, $show_count);
+					echo '</li>';
+				}
+			}
 		}
 
 		echo '</ul>';
@@ -146,71 +155,6 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 		$count = $show_count ? ' <span class="wpcsm-count">(' . (int)$term->count . ')</span>' : '';
 
 		return '<a class="wpcsm-link" href="' . esc_url($url) . '">' . $name . $count . '</a>';
-	}
-
-	/**
-	 * Renderuje:
-	 * - ścieżkę (gałąź) od kategorii głównej do bieżącej,
-	 * - oraz dzieci bieżącej kategorii (tylko 1 poziom).
-	 */
-	private function render_expanded_branch($top_id, array $chain_ids, $current_id, $hide_empty, $show_count) {
-		$html = '<ul class="wpcsm-sub">';
-
-		// Znajdź kolejny element ścieżki w dół (jeśli istnieje)
-		$next_id = 0;
-		for ($i = 0; $i < count($chain_ids); $i++) {
-			if ((int)$chain_ids[$i] === (int)$top_id) {
-				$next_id = isset($chain_ids[$i + 1]) ? (int)$chain_ids[$i + 1] : 0;
-				break;
-			}
-		}
-
-		// Jeśli jest kolejny element ścieżki -> renderuj tylko tę ścieżkę (bez rodzeństwa)
-		if ($next_id) {
-			$next_term = get_term($next_id, 'product_cat');
-			if ($next_term && !is_wp_error($next_term)) {
-				$is_current = ((int)$next_id === (int)$current_id);
-
-				$html .= '<li class="wpcsm-item'
-					. ($is_current ? ' is-current' : ' is-ancestor')
-					. '">';
-				$html .= $this->render_term_link($next_term, $show_count);
-
-				// Rekurencja w dół ścieżki aż do bieżącej kategorii
-				$html .= $this->render_expanded_branch($next_id, $chain_ids, $current_id, $hide_empty, $show_count);
-
-				$html .= '</li>';
-			}
-
-			$html .= '</ul>';
-			return $html;
-		}
-
-		// Koniec ścieżki => jesteśmy na bieżącym węźle: pokaż jego dzieci (1 poziom)
-		if ($current_id) {
-			$children = get_terms([
-				'taxonomy' => 'product_cat',
-				'parent' => (int)$top_id,
-				'hide_empty' => $hide_empty,
-				'orderby' => 'name',
-				'order' => 'ASC',
-			]);
-
-			if (!is_wp_error($children) && !empty($children)) {
-				foreach ($children as $child) {
-					$child_id = (int)$child->term_id;
-
-					$html .= '<li class="wpcsm-item wpcsm-item--child'
-						. ($child_id === (int)$current_id ? ' is-current' : '')
-						. '">';
-					$html .= $this->render_term_link($child, $show_count);
-					$html .= '</li>';
-				}
-			}
-		}
-
-		$html .= '</ul>';
-		return $html;
 	}
 
 	/**
