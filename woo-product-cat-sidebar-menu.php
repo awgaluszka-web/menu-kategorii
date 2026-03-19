@@ -2,11 +2,13 @@
 /**
  * Plugin Name: Woo Menu Kategorii Produktów (Sidebar)
  * Description: Widget do WooCommerce: wyświetla tylko główne kategorie produktów oraz rozwiniętą gałąź bieżącej kategorii (ścieżka) + podkategorie bieżącej kategorii o jeden poziom niżej.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Adam Gałuszka
  */
 
 if (!defined('ABSPATH')) exit;
+
+define('WPCSM_VERSION', '1.0.1');
 
 class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 
@@ -66,6 +68,14 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 		if (!is_product_category() && !is_product()) {
 			return;
 		}
+
+		// Załaduj styl tylko gdy widget rzeczywiście się renderuje
+		wp_enqueue_style(
+			'wpcsm-style',
+			plugin_dir_url(__FILE__) . 'assets/wpcsm.css',
+			[],
+			WPCSM_VERSION
+		);
 
 		$title = isset($instance['title']) ? $instance['title'] : '';
 		$hide_empty = !empty($instance['hide_empty']);
