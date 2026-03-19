@@ -1,14 +1,14 @@
 <?php
 /**
  * Plugin Name: Woo Menu Kategorii Produktów (Sidebar)
- * Description: Widget do WooCommerce: wyświetla menu kategorii produktów dopasowane do bieżącego kontekstu – jeśli kategoria ma dzieci, pokazuje ją z dziećmi; jeśli nie ma – pokazuje rodzeństwo.
- * Version: 1.2.0
+ * Description: Widget do WooCommerce: wyświetla pełne drzewo kategorii produktów z rozwinięciem gałęzi bieżącej kategorii; rodzeństwo zawsze widoczne w miejscu parenta.
+ * Version: 1.3.0
  * Author: Adam Gałuszka
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('WPCSM_VERSION', '1.2.0');
+define('WPCSM_VERSION', '1.3.0');
 
 class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 
@@ -16,7 +16,7 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 		parent::__construct(
 			'wpcsm_product_cat_sidebar_menu',
 			__('Woo: Menu kategorii (sidebar)', 'wpcsm'),
-			['description' => __('Tylko główne kategorie + rozwinięta gałąź bieżącej kategorii i jej dzieci (1 poziom).', 'wpcsm')]
+			['description' => __('Pełne drzewo kategorii z rozwinięciem gałęzi bieżącej kategorii i widocznym rodzeństwem.', 'wpcsm')]
 		);
 	}
 
@@ -94,15 +94,10 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 			echo $args['before_title'] . apply_filters('widget_title', $title) . $args['after_title'];
 		}
 
-		// Pobierz dzieci bieżącej kategorii
-		$children = get_terms([
-			'taxonomy'   => 'product_cat',
-			'parent'     => $current_id,
-			'hide_empty' => $hide_empty,
-			'orderby'    => 'name',
-			'order'      => 'ASC',
-		]);
-		$has_children = !is_wp_error($children) && !empty($children);
+		// Łańcuch przodków od korzenia do bieżącej kategorii
+		$ancestors = get_ancestors($current_id, 'product_cat');
+		$chain_ids = array_reverse($ancestors); // od root-ancestor do parenta
+		$chain_ids[] = $current_id;
 
 		// Link "Cofnij do ..." – pokaż, jeśli bieżąca kategoria ma rodzica
 		if ($current_term && !empty($current_term->parent)) {
@@ -119,39 +114,27 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 			}
 		}
 
+		// Pobierz wszystkie top-level kategorie
+		$top_cats = get_terms([
+			'taxonomy'   => 'product_cat',
+			'parent'     => 0,
+			'hide_empty' => $hide_empty,
+			'orderby'    => 'name',
+			'order'      => 'ASC',
+		]);
+
 		echo '<ul class="wpcsm-menu wpcsm-menu--product-cat">';
 
-		if ($has_children) {
-			// Wariant 1: X ma dzieci → pokaż X (aktywna) + dzieci X (1 poziom)
-			echo '<li class="wpcsm-item wpcsm-item--current is-current">';
-			echo $this->render_term_link($current_term, $show_count);
-			echo '<ul class="wpcsm-sub">';
-			foreach ($children as $child) {
-				echo '<li class="wpcsm-item wpcsm-item--child">';
-				echo $this->render_term_link($child, $show_count);
-				echo '</li>';
-			}
-			echo '</ul>';
-			echo '</li>';
-		} else {
-			// Wariant 2: X nie ma dzieci → pokaż rodzeństwo (dzieci parenta X)
-			// Jeśli parent = 0 → wszystkie kategorie główne
-			$parent_id = isset($current_term->parent) ? (int) $current_term->parent : 0;
-			$siblings  = get_terms([
-				'taxonomy'   => 'product_cat',
-				'parent'     => $parent_id,
-				'hide_empty' => $hide_empty,
-				'orderby'    => 'name',
-				'order'      => 'ASC',
-			]);
-
-			if (!is_wp_error($siblings) && !empty($siblings)) {
-				foreach ($siblings as $sibling) {
-					$is_current = ((int) $sibling->term_id === $current_id);
-					echo '<li class="wpcsm-item'
-						. ($is_current ? ' is-current' : '')
-						. '">';
-					echo $this->render_term_link($sibling, $show_count);
+		if (!is_wp_error($top_cats) && !empty($top_cats)) {
+			foreach ($top_cats as $top_cat) {
+				$top_id = (int) $top_cat->term_id;
+				if (in_array($top_id, $chain_ids, true)) {
+					// Renderuj rozwinięty branch (gałąź do bieżącej kategorii)
+					echo $this->render_expanded_branch($top_id, $chain_ids, $current_id, $hide_empty, $show_count);
+				} else {
+					// Zwykły top-level item bez rozwijania
+					echo '<li class="wpcsm-item">';
+					echo $this->render_term_link($top_cat, $show_count);
 					echo '</li>';
 				}
 			}
@@ -160,6 +143,84 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 		echo '</ul>';
 
 		echo $args['after_widget'];
+	}
+
+	/**
+	 * Renderuje gałąź drzewa od danego węzła w dół do current_id.
+	 * Na każdym poziomie przodka pokazuje wszystkie jego dzieci (rodzeństwo),
+	 * rozwijając rekurencyjnie tylko tego, który należy do łańcucha chain_ids.
+	 */
+	private function render_expanded_branch($term_id, $chain_ids, $current_id, $hide_empty, $show_count) {
+		$term = get_term($term_id, 'product_cat');
+		if (!$term || is_wp_error($term)) {
+			return '';
+		}
+
+		$is_current  = ($term_id === $current_id);
+		$is_ancestor = !$is_current && in_array($term_id, $chain_ids, true);
+
+		$classes = ['wpcsm-item'];
+		if ($is_current) {
+			$classes[] = 'is-current';
+		} elseif ($is_ancestor) {
+			$classes[] = 'is-ancestor';
+		}
+
+		$html  = '<li class="' . implode(' ', $classes) . '">';
+		$html .= $this->render_term_link($term, $show_count);
+
+		if ($is_current) {
+			// Pokaż dzieci bieżącej kategorii (1 poziom niżej), jeśli ma
+			$children = get_terms([
+				'taxonomy'   => 'product_cat',
+				'parent'     => $term_id,
+				'hide_empty' => $hide_empty,
+				'orderby'    => 'name',
+				'order'      => 'ASC',
+			]);
+			if (!is_wp_error($children) && !empty($children)) {
+				$html .= '<ul class="wpcsm-sub">';
+				foreach ($children as $child) {
+					$html .= '<li class="wpcsm-item">';
+					$html .= $this->render_term_link($child, $show_count);
+					$html .= '</li>';
+				}
+				$html .= '</ul>';
+			}
+		} else {
+			// Przodek – znajdź następny węzeł w łańcuchu i rozwiń wszystkich jego braci
+			$chain_index   = array_search($term_id, $chain_ids, true);
+			$next_in_chain = isset($chain_ids[$chain_index + 1]) ? (int) $chain_ids[$chain_index + 1] : null;
+
+			if ($next_in_chain !== null) {
+				$children = get_terms([
+					'taxonomy'   => 'product_cat',
+					'parent'     => $term_id,
+					'hide_empty' => $hide_empty,
+					'orderby'    => 'name',
+					'order'      => 'ASC',
+				]);
+				if (!is_wp_error($children) && !empty($children)) {
+					$html .= '<ul class="wpcsm-sub">';
+					foreach ($children as $child) {
+						$child_id = (int) $child->term_id;
+						if ($child_id === $next_in_chain) {
+							// Rekurencja dla następnego w łańcuchu
+							$html .= $this->render_expanded_branch($child_id, $chain_ids, $current_id, $hide_empty, $show_count);
+						} else {
+							// Rodzeństwo – render bez rozwijania
+							$html .= '<li class="wpcsm-item">';
+							$html .= $this->render_term_link($child, $show_count);
+							$html .= '</li>';
+						}
+					}
+					$html .= '</ul>';
+				}
+			}
+		}
+
+		$html .= '</li>';
+		return $html;
 	}
 
 	private function render_term_link($term, $show_count) {
@@ -190,19 +251,15 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 				return null;
 			}
 
-			$deepest = null;
+			$deepest  = null;
 			$max_depth = -1;
 
 			foreach ($terms as $t) {
-				$anc = get_ancestors($t->term_id, 'product_cat');
+				$anc   = get_ancestors($t->term_id, 'product_cat');
 				$depth = is_array($anc) ? count($anc) : 0;
 
-				// Remis: wybierz wyższe term_id (prosty tie-breaker)
 				if ($depth > $max_depth || ($depth === $max_depth && $deepest && (int)$t->term_id > (int)$deepest->term_id)) {
-					$deepest = $t;
-					$max_depth = $depth;
-				} elseif ($depth > $max_depth && !$deepest) {
-					$deepest = $t;
+					$deepest   = $t;
 					$max_depth = $depth;
 				}
 			}

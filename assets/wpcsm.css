@@ -13,7 +13,6 @@
 
 /* Główna lista */
 .wpcsm-menu {
-	font-size: 0.95em;
 	line-height: 1.6;
 }
 
@@ -33,14 +32,14 @@
 }
 
 .wpcsm-menu > .wpcsm-item > .wpcsm-link:hover {
-	text-decoration: underline;
+	text-decoration: none;
 }
 
 /* Bieżąca kategoria – ciemna, pogrubiona */
 .wpcsm-menu .is-current > .wpcsm-link {
 	font-weight: 700;
 	color: #222;
-	text-decoration: underline;
+	text-decoration: none;
 }
 
 /* Przodek bieżącej kategorii */
@@ -93,11 +92,10 @@
 	padding: 2px 0;
 	text-decoration: none;
 	color: inherit;
-	font-size: 0.92em;
 }
 
 .wpcsm-menu .wpcsm-sub > .wpcsm-item > .wpcsm-link:hover {
-	text-decoration: underline;
+	text-decoration: none;
 }
 
 /* Liczba produktów */
@@ -121,5 +119,5 @@
 }
 
 .wpcsm-back__link:hover {
-	text-decoration: underline;
+	text-decoration: none;
 }
