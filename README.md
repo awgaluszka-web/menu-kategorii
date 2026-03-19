@@ -1,15 +1,41 @@
 # Woo Menu Kategorii Produktów (Sidebar)
 
-Wtyczka WordPress/WooCommerce dodająca klasyczny widget z prostym menu kategorii produktów w sidebar.
+Wtyczka WordPress/WooCommerce dodająca klasyczny widget z menu kategorii produktów w sidebar.
+
+## Nowe zasady działania (v1.1.0)
+
+Widget wyświetla zwięzłe, kontekstowe menu dopasowane do bieżącej strony:
+
+- **Jeśli bieżąca kategoria X ma podkategorie:**
+  - wyświetla wyłącznie X (wyróżnioną jako aktywną) oraz jej bezpośrednie podkategorie (1 poziom niżej).
+- **Jeśli bieżąca kategoria X nie ma podkategorii:**
+  - wyświetla rodzeństwo X (dzieci parenta X); jeśli X jest kategorią główną (parent = 0), pokazuje wszystkie kategorie główne.
+  - X jest wyróżnione jako aktywne wśród rodzeństwa.
+- Nigdy nie wyświetla całego drzewa ani kategorii spoza powyższych reguł.
+
+### Ustalanie bieżącej kategorii
+
+| Kontekst | Sposób ustalenia |
+|---|---|
+| Archiwum kategorii (`product_cat`) | `get_queried_object()` |
+| Strona produktu (single product) | Najgłębsza (leaf) z przypisanych kategorii produktu |
 
 ## Funkcje
 
-- Wyświetla tylko **główne kategorie** produktów (parent = 0).
 - Widoczny **wyłącznie** na stronach kategorii produktów (archiwa `product_cat`) i stronach produktów.
-- Na stronie kategorii **rozwija gałąź** prowadzącą do bieżącej kategorii + pokazuje jej podkategorie (1 poziom niżej).
 - Na stronie produktu bieżąca kategoria to **najgłębsza** (leaf) z przypisanych kategorii produktu.
 - CSS ładowany **tylko wtedy**, gdy widget rzeczywiście renderuje się na stronie.
-- Menu ostylowane jak **drzewo**: wcięcia, pionowa linia pnia, poziome łączniki.
+
+## Styl (Avada-friendly)
+
+Widget używa kolorów motywu Avada poprzez CSS variables z fallbackami:
+
+```
+--awb-color1 → --awb-color-primary → --primary_color → --primary → currentColor
+```
+
+Aktywna kategoria jest wyróżniona lewym paskiem i delikatnym tłem w kolorze primary motywu.
+Brak czerwonego koloru — styl dostosowuje się automatycznie do palety motywu.
 
 ## Instalacja
 
@@ -31,7 +57,7 @@ Wtyczka WordPress/WooCommerce dodająca klasyczny widget z prostym menu kategori
 woo-product-cat-sidebar-menu/
 ├── woo-product-cat-sidebar-menu.php   # Główny plik wtyczki
 └── assets/
-    └── wpcsm.css                      # Style drzewa kategorii
+    └── wpcsm.css                      # Style sidebara (Avada-friendly)
 ```
 
 ## Klasy CSS
@@ -41,12 +67,11 @@ Możesz nadpisać styl w motywie, używając poniższych klas:
 | Klasa | Opis |
 |---|---|
 | `.wpcsm-menu` | Główna lista kategorii |
-| `.wpcsm-sub` | Podlista (rozwinięta gałąź) |
+| `.wpcsm-sub` | Podlista (podkategorie bieżącej kategorii) |
 | `.wpcsm-item` | Element listy |
-| `.wpcsm-item--top` | Element na poziomie głównym |
+| `.wpcsm-item--current` | Bieżąca kategoria (wariant z dziećmi) |
 | `.wpcsm-item--child` | Bezpośrednia podkategoria bieżącej kategorii |
-| `.is-current` | Bieżąca kategoria |
-| `.is-ancestor` | Przodek bieżącej kategorii |
+| `.is-current` | Wyróżnienie bieżącej kategorii |
 | `.wpcsm-link` | Link kategorii |
 | `.wpcsm-count` | Liczba produktów |
 
