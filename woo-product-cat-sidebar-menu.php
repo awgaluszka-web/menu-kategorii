@@ -2,13 +2,13 @@
 /**
  * Plugin Name: Woo Menu Kategorii Produktów (Sidebar)
  * Description: Widget do WooCommerce: wyświetla menu kategorii produktów dopasowane do bieżącego kontekstu – jeśli kategoria ma dzieci, pokazuje ją z dziećmi; jeśli nie ma – pokazuje rodzeństwo.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Adam Gałuszka
  */
 
 if (!defined('ABSPATH')) exit;
 
-define('WPCSM_VERSION', '1.1.0');
+define('WPCSM_VERSION', '1.2.0');
 
 class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 
@@ -103,6 +103,21 @@ class WPCSM_Product_Cat_Sidebar_Menu_Widget extends WP_Widget {
 			'order'      => 'ASC',
 		]);
 		$has_children = !is_wp_error($children) && !empty($children);
+
+		// Link "Cofnij do ..." – pokaż, jeśli bieżąca kategoria ma rodzica
+		if ($current_term && !empty($current_term->parent)) {
+			$parent = get_term((int) $current_term->parent, 'product_cat');
+			if ($parent && !is_wp_error($parent)) {
+				$parent_url = get_term_link($parent, 'product_cat');
+				if (!is_wp_error($parent_url)) {
+					echo '<div class="wpcsm-back">';
+					echo '<a class="wpcsm-back__link" href="' . esc_url($parent_url) . '">';
+					echo esc_html__('← Cofnij do', 'wpcsm') . ' ' . esc_html($parent->name);
+					echo '</a>';
+					echo '</div>';
+				}
+			}
+		}
 
 		echo '<ul class="wpcsm-menu wpcsm-menu--product-cat">';
 

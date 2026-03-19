@@ -106,3 +106,20 @@
 	font-size: 0.85em;
 	font-weight: 400;
 }
+
+/* Link "Cofnij do ..." nad drzewem */
+.wpcsm-back {
+	margin: 0 0 8px;
+}
+
+.wpcsm-back__link {
+	display: inline-block;
+	font-weight: 600;
+	text-decoration: none;
+	color: inherit;
+	padding: 4px 0;
+}
+
+.wpcsm-back__link:hover {
+	text-decoration: underline;
+}
