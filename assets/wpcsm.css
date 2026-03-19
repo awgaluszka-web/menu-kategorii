@@ -1,0 +1,78 @@
+/* =============================================
+   WPCSM – Menu kategorii produktów (drzewo)
+   ============================================= */
+
+.wpcsm-menu,
+.wpcsm-menu .wpcsm-sub {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+/* Główna lista */
+.wpcsm-menu {
+	font-size: 0.95em;
+	line-height: 1.5;
+}
+
+/* Każdy element */
+.wpcsm-menu .wpcsm-item {
+	position: relative;
+	margin: 0;
+	padding: 0;
+}
+
+/* Linki */
+.wpcsm-menu .wpcsm-link {
+	display: block;
+	padding: 3px 6px;
+	text-decoration: none;
+	color: inherit;
+	line-height: 1.4;
+}
+
+.wpcsm-menu .wpcsm-link:hover {
+	text-decoration: underline;
+}
+
+/* Bieżąca kategoria */
+.wpcsm-menu .is-current > .wpcsm-link {
+	font-weight: bold;
+	color: #c00;
+}
+
+/* Przodek bieżącej kategorii */
+.wpcsm-menu .is-ancestor > .wpcsm-link {
+	font-weight: bold;
+}
+
+/* --- Podlisty – efekt drzewa --- */
+
+/* Pionowa linia pnia (border-left na kontenerze podlisty) */
+.wpcsm-menu .wpcsm-sub {
+	margin-left: 14px;
+	padding-left: 0;
+	border-left: 2px solid #ccc;
+}
+
+/* Każdy element podlisty: poziomy łącznik (pseudo-element) */
+.wpcsm-menu .wpcsm-sub > .wpcsm-item {
+	position: relative;
+	padding-left: 16px;
+}
+
+.wpcsm-menu .wpcsm-sub > .wpcsm-item::before {
+	content: '';
+	position: absolute;
+	left: 0;
+	top: 0.75em; /* wycentruj pionowo względem tekstu */
+	width: 14px;
+	height: 0;
+	border-top: 2px solid #ccc;
+}
+
+/* Liczba produktów */
+.wpcsm-count {
+	color: #999;
+	font-size: 0.85em;
+}
